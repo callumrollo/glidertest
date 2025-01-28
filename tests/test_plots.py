@@ -87,3 +87,28 @@ def test_basic_statistics():
     plots.plot_ts(ds)
 
 
+def test_vert_vel():
+    ds_sg014 = fetchers.load_sample_dataset(dataset_name="sg014_20040924T182454_delayed_subset.nc")
+    ds_sg014 = tools.calc_w_meas(ds_sg014)
+    ds_sg014 = tools.calc_w_sw(ds_sg014)
+    plots.plot_vertical_speeds_with_histograms(ds_sg014)
+    ds_dives = ds_sg014.sel(N_MEASUREMENTS=ds_sg014.PHASE == 2)
+    ds_climbs = ds_sg014.sel(N_MEASUREMENTS=ds_sg014.PHASE == 1)
+    ds_out_dives = tools.quant_binavg(ds_dives, var='VERT_CURR_MODEL', dz=10)
+    ds_out_climbs = tools.quant_binavg(ds_climbs, var='VERT_CURR_MODEL', dz=10)
+    plots.plot_combined_velocity_profiles(ds_out_dives, ds_out_climbs)
+    # extra tests for ramsey calculations of DEPTH_Z
+    ds_climbs = ds_climbs.drop_vars(['DEPTH_Z'])
+    tools.quant_binavg(ds_climbs, var='VERT_CURR_MODEL', dz=10)
+    ds_climbs = ds_climbs.drop_vars(['LATITUDE'])
+    with pytest.raises(KeyError) as e:
+        tools.quant_binavg(ds_climbs, var='VERT_CURR_MODEL', dz=10)
+
+
+def test_hyst_plot(var='DOXY'):
+    ds = fetchers.load_sample_dataset()
+    fig, ax = plots.plot_hysteresis(ds, var=var, v_res=1, perct_err=2, ax=None)
+    assert ax[3].get_ylabel() == 'Depth (m)'
+    assert ax[0].get_ylabel() == 'Depth (m)'
+
+
