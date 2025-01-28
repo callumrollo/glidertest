@@ -16,11 +16,11 @@ data_source_og = pooch.create(
 )
 
 
-def load_sample_dataset(dataset_name="sea045_20230530T0832_delayed.nc"):
+def load_sample_dataset(dataset_name="sea045_20230604T1253_delayed.nc"):
     """Download sample datasets for use with glidertest
 
     Args:
-        dataset_name (str, optional): _description_. Defaults to "sea045_20230530T0832_delayed.nc".
+        dataset_name (str, optional): _description_. Defaults to "sea045_20230604T1253_delayed.nc".
 
     Raises:
         ValueError: If the requests dataset is not known, raises a value error
