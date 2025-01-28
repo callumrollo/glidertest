@@ -112,3 +112,20 @@ def test_hyst_plot(var='DOXY'):
     assert ax[0].get_ylabel() == 'Depth (m)'
 
 
+def test_sop():
+    ds = fetchers.load_sample_dataset()
+    plots.plot_global_range(ds, var='DOXY', min_val=-5, max_val=600, ax=None)
+    spike = qartod.spike_test(ds.DOXY, suspect_threshold=25, fail_threshold=50, method="average", )
+    plots.plot_ioosqc(spike, suspect_threshold=[25], fail_threshold=[50], title='Spike test DOXY')
+    flat = qartod.flat_line_test(ds.DOXY, ds.TIME, 1, 2, 0.001)
+    plots.plot_ioosqc(flat, suspect_threshold=[0.01], fail_threshold=[0.1], title='Flat test DOXY')
+
+
+def test_plot_sampling_period_all():
+    ds = fetchers.load_sample_dataset()
+    plots.plot_sampling_period_all(ds)
+    plots.plot_sampling_period(ds, variable='CHLA')
+
+def test_plot_max_depth():
+    ds = fetchers.load_sample_dataset()
+    plots.plot_max_depth_per_profile(ds)
