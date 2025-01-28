@@ -16,7 +16,7 @@ data_source_og = pooch.create(
 )
 
 
-def load_sample_dataset(dataset_name="sea045_20230604T1253_delayed.nc"):
+def load_sample_dataset(dataset_name="sg014_20040924T182454_delayed_subset.nc"):
     """Download sample datasets for use with glidertest
 
     Args:
