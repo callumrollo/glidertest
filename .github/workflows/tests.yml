@@ -36,4 +36,4 @@ jobs:
 
     - name: Full Tests
       run: |
-        python -m pytest --cov=glidertest --cov-report term-missing  tests/
+        python -m pytest  tests/
