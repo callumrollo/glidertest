@@ -1,0 +1,643 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>glidertest.tools &mdash; glidertest v0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=2fea6348"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            glidertest
+              <img src="../../_static/glider.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../demo-output.html">Glidertest demo</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glidertest.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">glidertest</span> <span class="pre">API</span></code></a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">glidertest</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">glidertest.tools</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for glidertest.tools</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gsw</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">glidertest</span><span class="w"> </span><span class="kn">import</span> <span class="n">utilities</span>
+
+<div class="viewcode-block" id="quant_updown_bias">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.quant_updown_bias">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">quant_updown_bias</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">&#39;PSAL&#39;</span><span class="p">,</span> <span class="n">v_res</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes up and downcast averages for a specific variable</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least time, depth, latitude, longitude and the selected variable. </span>
+<span class="sd">        Data should not be gridded.</span>
+<span class="sd">    var: Selected variable</span>
+<span class="sd">    v_res: Vertical resolution for the gridding</span>
+<span class="sd">                </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df: pandas dataframe containing dc (Dive - Climb average), cd (Climb - Dive average) and depth</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;PROFILE_NUMBER&#39;</span><span class="p">,</span> <span class="s1">&#39;DEPTH&#39;</span><span class="p">,</span> <span class="n">var</span><span class="p">])</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Horizontal resolution</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">v_res</span>  <span class="c1"># Vertical resolution</span>
+
+    <span class="k">if</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+        <span class="n">varG</span><span class="p">,</span> <span class="n">profG</span><span class="p">,</span> <span class="n">depthG</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">construct_2dgrid</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">DEPTH</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">p</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+
+        <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">varG</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Horizontal gradients</span>
+        <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+            <span class="n">dc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Dive - CLimb</span>
+            <span class="n">cd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Climb - Dive</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;dc&#39;</span><span class="p">:</span> <span class="n">dc</span><span class="p">,</span> <span class="s1">&#39;cd&#39;</span><span class="p">:</span> <span class="n">cd</span><span class="p">,</span> <span class="s1">&#39;depth&#39;</span><span class="p">:</span> <span class="n">depthG</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]})</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">var</span><span class="si">}</span><span class="s1"> is not in the dataset&#39;</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="compute_daynight_avg">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.compute_daynight_avg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_daynight_avg</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">sel_var</span><span class="o">=</span><span class="s1">&#39;CHLA&#39;</span><span class="p">,</span> <span class="n">start_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start_prof</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_prof</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes night and day averages for a selected variable over a specific period of time or a specific series of dives</span>
+<span class="sd">    Data in divided into day and night using the sunset and sunrise time as described in the above function sunset_sunrise from GliderTools</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least time, depth, latitude, longitude and the selected variable. </span>
+<span class="sd">        Data should not be gridded.</span>
+<span class="sd">    sel_var: variable to use to compute the day night averages</span>
+<span class="sd">    start_time: Start date of the data selection. As missions can be long and can make it hard to visualise NPQ effect,</span>
+<span class="sd">                we recommend selecting small section of few days to a few weeks. Defaults to the central week of the deployment</span>
+<span class="sd">    end_time: End date of the data selection. As missions can be long and can make it hard to visualise NPQ effect,</span>
+<span class="sd">                we recommend selecting small section of few days to a few weeks. Defaults to the central week of the deployment</span>
+<span class="sd">    start_prof: Start profile of the data selection. If no profile is specified, the specified time selection will be used</span>
+<span class="sd">                or the central week of the deployment.</span>
+<span class="sd">                It is important to have a large enough number of dives to have some day and night data otherwise the function will not run</span>
+<span class="sd">    end_prof:  End profile of the data selection. If no profile is specified, the specified time selection will be used</span>
+<span class="sd">            or the central week of the deployment.</span>
+<span class="sd">    It is important to have a large enough number of dives to have some day and night data otherwise the function will not run</span>
+<span class="sd">                </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    day_av: pandas.Dataframe</span>
+<span class="sd">        A dataframe with the day averages of the selected variable with the following columns:</span>
+<span class="sd">            batch: Number representing the grouping for each day. This number can represent the number of the day in chronological order</span>
+<span class="sd">            depth: Depth values for the average</span>
+<span class="sd">            dat: Average value for the selected variable</span>
+<span class="sd">            day: Actual date for the batch </span>
+<span class="sd">    night_av: pandas.Dataframe</span>
+<span class="sd">        A dataframe with the night averages of the selected variable with the following columns:</span>
+<span class="sd">            batch: Number representing the grouping for each day. This number can represent the number of the day in chronological order</span>
+<span class="sd">            depth: Depth values for the average</span>
+<span class="sd">            dat: Average value for the selected variable</span>
+<span class="sd">            day: Actual date for the batch </span>
+<span class="sd">    </span>
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara Monforte</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;TIME&#39;</span><span class="p">,</span> <span class="n">sel_var</span><span class="p">,</span> <span class="s1">&#39;DEPTH&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">&quot;TIME&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">indexes</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">set_xindex</span><span class="p">(</span><span class="s1">&#39;TIME&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">start_time</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">end_time</span><span class="p">:</span>
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">start_prof</span> <span class="ow">and</span> <span class="n">end_prof</span><span class="p">:</span>
+        <span class="n">t1</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="o">==</span><span class="n">start_prof</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">t2</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="o">==</span><span class="n">end_prof</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ds_sel</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">TIME</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">t1</span><span class="p">,</span><span class="n">t2</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ds_sel</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">TIME</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">start_time</span><span class="p">,</span> <span class="n">end_time</span><span class="p">))</span>
+    <span class="n">sunrise</span><span class="p">,</span> <span class="n">sunset</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">compute_sunset_sunrise</span><span class="p">(</span><span class="n">ds_sel</span><span class="o">.</span><span class="n">TIME</span><span class="p">,</span> <span class="n">ds_sel</span><span class="o">.</span><span class="n">LATITUDE</span><span class="p">,</span> <span class="n">ds_sel</span><span class="o">.</span><span class="n">LONGITUDE</span><span class="p">)</span>
+
+    <span class="c1"># creating batches where one batch is a night and the following day</span>
+    <span class="n">day</span> <span class="o">=</span> <span class="p">(</span><span class="n">ds_sel</span><span class="o">.</span><span class="n">TIME</span> <span class="o">&gt;</span> <span class="n">sunrise</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds_sel</span><span class="o">.</span><span class="n">TIME</span> <span class="o">&lt;</span> <span class="n">sunset</span><span class="p">)</span>
+    <span class="c1"># find day and night transitions</span>
+    <span class="n">daynight_transitions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">day</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)))</span>
+    <span class="c1"># get the cumulative sum of daynight to generate separate batches for day and night</span>
+    <span class="n">daynight_batches</span> <span class="o">=</span> <span class="n">daynight_transitions</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">daynight_batches</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+
+    <span class="c1"># Create day and night averages to then have easy to plot</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">ds_sel</span><span class="p">[</span><span class="n">sel_var</span><span class="p">],</span> <span class="n">day</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">ds_sel</span><span class="p">[</span><span class="s1">&#39;DEPTH&#39;</span><span class="p">]],</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;dat&#39;</span><span class="p">,</span> <span class="s1">&#39;day&#39;</span><span class="p">,</span> <span class="s1">&#39;batch&#39;</span><span class="p">,</span> <span class="s1">&#39;depth&#39;</span><span class="p">])</span>
+    <span class="n">ave</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dat</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">df</span><span class="o">.</span><span class="n">day</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">batch</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">depth</span><span class="p">)])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">day_av</span> <span class="o">=</span> <span class="n">ave</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">night_av</span> <span class="o">=</span> <span class="n">ave</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="c1">#Assign date value</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">day_av</span><span class="o">.</span><span class="n">batch</span><span class="p">):</span>
+        <span class="n">date_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ds_sel</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">batch</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+        <span class="n">day_av</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">day_av</span><span class="o">.</span><span class="n">batch</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">date_val</span>
+        <span class="n">night_av</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">night_av</span><span class="o">.</span><span class="n">batch</span> <span class="o">==</span> <span class="n">i</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">date_val</span>
+    <span class="k">return</span> <span class="n">day_av</span><span class="p">,</span> <span class="n">night_av</span></div>
+
+
+
+<div class="viewcode-block" id="check_monotony">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.check_monotony">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_monotony</span><span class="p">(</span><span class="n">da</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function check weather the selected variable over the mission is monotonically increasing or not. This is developed in particular for profile number.</span>
+<span class="sd">    If the profile number is not monotonically increasing, this may mean that whatever function was used to assign the profile number may have misassigned at some points.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    da: xarray.DataArray on OG1 format. Data should not be gridded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    It will print a sentence stating whether data is</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara Monforte</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">da</span><span class="p">)</span><span class="o">.</span><span class="n">is_monotonic_increasing</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">da</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> is not always monotonically increasing&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">da</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> is always monotonically increasing&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="calc_w_meas">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.calc_w_meas">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_w_meas</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the vertical velocity of a glider using changes in pressure with time.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds (xarray.Dataset): Dataset containing &#39;DEPTH&#39; and &#39;TIME&#39;.</span>
+<span class="sd">    - DEPTH (array-like): Array of depth measurements</span>
+<span class="sd">    - TIME (array-like): Array of time stamps</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ds (xarray.Dataset): Containing the new variable</span>
+<span class="sd">    - GLIDER_VERT_VELO_DZDT (array-like): with vertical velocities calculated from dz/dt</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Eleanor Frajka-Williams</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;TIME&#39;</span><span class="p">])</span>
+    <span class="c1"># Ensure inputs are numpy arrays</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">if</span> <span class="s1">&#39;DEPTH_Z&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">var</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">,</span> <span class="s1">&#39;LATITUDE&#39;</span><span class="p">,</span> <span class="s1">&#39;LONGITUDE&#39;</span><span class="p">]):</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">calc_DEPTH_Z</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">DEPTH_Z</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="c1"># Calculate the centered differences in pressure and time, i.e. instead of using neighboring points, </span>
+    <span class="c1"># use the points two steps away.  This has a couple of advantages: one being a slight smoothing of the</span>
+    <span class="c1"># differences, and the other that the calculated speed will be the speed at the midpoint of the two </span>
+    <span class="c1"># points.</span>
+    <span class="c1"># For data which are evenly spaced in time, this will be equivalent to a centered difference.</span>
+    <span class="c1"># For data which are not evenly spaced in time, i.e. when a Seaglider sample rate changes from 5 </span>
+    <span class="c1"># seconds to 10 seconds, there may be some uneven weighting of the differences.</span>
+    <span class="n">delta_z_meters</span> <span class="o">=</span> <span class="p">(</span><span class="n">depth</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="n">depth</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> 
+    <span class="n">delta_time_datetime64ns</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="n">time</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> 
+    <span class="n">delta_time_sec</span> <span class="o">=</span> <span class="n">delta_time_datetime64ns</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;s&#39;</span><span class="p">)</span>  <span class="c1"># Convert to seconds</span>
+
+    <span class="c1"># Calculate vertical velocity (rate of change of pressure with time)</span>
+    <span class="n">vertical_velocity</span> <span class="o">=</span> <span class="n">delta_z_meters</span> <span class="o">/</span> <span class="n">delta_time_sec</span>
+
+    <span class="c1"># Pad the result to match the original array length</span>
+    <span class="n">vertical_velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">vertical_velocity</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;edge&#39;</span><span class="p">)</span> 
+
+    <span class="c1"># No - Convert vertical velocity from m/s to cm/s</span>
+    <span class="n">vertical_velocity</span> <span class="o">=</span> <span class="n">vertical_velocity</span> 
+
+    <span class="c1"># Add vertical velocity to the dataset</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">GLIDER_VERT_VELO_DZDT</span><span class="o">=</span><span class="p">((</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">),</span> <span class="n">vertical_velocity</span><span class="p">,</span>  <span class="p">{</span><span class="s1">&#39;long_name&#39;</span><span class="p">:</span> <span class="s1">&#39;glider_vertical_speed_from_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;m s-1&#39;</span><span class="p">}))</span>
+
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="calc_w_sw">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.calc_w_sw">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calc_w_sw</span><span class="p">(</span><span class="n">ds</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the vertical seawater velocity and add it to the dataset.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds (xarray.Dataset): Dataset containing &#39;VERT_GLIDER_SPEED&#39; and &#39;VERT_SPEED_DZDT&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ds (xarray.Dataset): Dataset with the new variable &#39;VERT_SW_SPEED&#39;, which is the inferred vertical seawater velocity.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    -----</span>
+<span class="sd">    This could be bundled with calc_glider_w_from_depth, but keeping them separate allows for some extra testing/flexibility for the user. </span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Eleanor Frajka-Williams</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Eleanor&#39;s note: This could be bundled with calc_glider_w_from_depth, but keeping them separate allows for some extra testing/flexibility for the user. </span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;GLIDER_VERT_VELO_MODEL&#39;</span><span class="p">,</span> <span class="s1">&#39;GLIDER_VERT_VELO_DZDT&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># Calculate the vertical seawater velocity</span>
+    <span class="n">vert_sw_speed</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;GLIDER_VERT_VELO_DZDT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;GLIDER_VERT_VELO_MODEL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span> 
+
+    <span class="c1"># Add vertical seawater velocity to the dataset as a data variable</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">VERT_CURR_MODEL</span><span class="o">=</span><span class="p">((</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">),</span> <span class="n">vert_sw_speed</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;long_name&#39;</span><span class="p">:</span> <span class="s1">&#39;vertical_current_of_seawater_derived_from_glider_flight_model&#39;</span><span class="p">,</span> <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;m s-1&#39;</span><span class="p">}))</span>
+    <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="quant_binavg">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.quant_binavg">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">quant_binavg</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">&#39;VERT_CURR&#39;</span><span class="p">,</span> <span class="n">zgrid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the bin average of vertical velocities within specified depth ranges.</span>
+<span class="sd">    This function computes the bin average of all vertical velocities within depth ranges,</span>
+<span class="sd">    accounting for the uneven vertical spacing of seaglider data in depth (but regular in time).</span>
+<span class="sd">    It uses the pressure data to calculate depth and then averages the vertical velocities</span>
+<span class="sd">    within each depth bin.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    - ds using the variables PRES and VERT_SW_SPEED</span>
+<span class="sd">    - zgrid (array-like, optional): Depth grid for binning. If None, a default grid is created.</span>
+<span class="sd">    - dz (float, optional): Interval for creating depth grid if zgrid is not provided.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    - meanw (array-like): Bin-averaged vertical velocities for each depth bin.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    I know this is a non-sensical name.  We should re-name, but is based on advice from Ramsey Harcourt.</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Eleanor Frajka-Williams</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="n">var</span><span class="p">,</span> <span class="s1">&#39;PRES&#39;</span><span class="p">])</span>
+    <span class="n">press</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">PRES</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">ww</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="c1"># Calculate depth from pressure using gsw</span>
+    <span class="k">if</span> <span class="s1">&#39;DEPTH_Z&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">depth</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">DEPTH_Z</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">elif</span> <span class="s1">&#39;LATITUDE&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">latmean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">LATITUDE</span><span class="p">)</span>
+        <span class="n">depth</span> <span class="o">=</span> <span class="n">gsw</span><span class="o">.</span><span class="n">z_from_p</span><span class="p">(</span><span class="n">press</span><span class="p">,</span> <span class="n">lat</span><span class="o">=</span><span class="n">latmean</span><span class="p">)</span>  <span class="c1"># Assuming latitude is 0, adjust as necessary</span>
+    <span class="k">else</span><span class="p">:</span> 
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;DEPTH_Z and LATITUDE are missing. At least one of the two variables is needed.&quot;</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">zgrid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">dz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dz</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Default interval if neither zgrid nor dz is provided</span>
+        <span class="n">zgrid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span><span class="o">/</span><span class="mi">10</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dz</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">findbetw</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">bounds</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">arr</span> <span class="o">&gt;</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">arr</span> <span class="o">&lt;=</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]))[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Calculate bin edges from zgrid centers</span>
+    <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">zgrid</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">zgrid</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">bin_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">zgrid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">zgrid</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">zgrid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">bin_edges</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">zgrid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">zgrid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">zgrid</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="n">meanw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">))</span>
+    <span class="n">NNz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">))</span>
+    <span class="n">w_lower</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">))</span>
+    <span class="n">w_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">))</span>
+
+    <span class="c1"># Cycle through the bins and calculate the mean vertical velocity</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">zdo</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zgrid</span><span class="p">)):</span>
+            <span class="n">z1</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span>
+            <span class="n">z2</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[</span><span class="n">zdo</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">ifind</span> <span class="o">=</span> <span class="n">findbetw</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="p">[</span><span class="n">z1</span><span class="p">,</span> <span class="n">z2</span><span class="p">])</span>
+
+            <span class="n">CIlimits</span> <span class="o">=</span> <span class="mf">.95</span> <span class="c1"># Could be passed as a variable. 0.95 for 95% confidence intervals</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ifind</span><span class="p">):</span>
+                <span class="n">meanw</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">ww</span><span class="p">[</span><span class="n">ifind</span><span class="p">])</span>
+
+                <span class="c1"># Confidence intervals</span>
+                <span class="c1"># Number of data points used in the mean at this depth (zgrid[zdo])</span>
+                <span class="n">NNz</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ifind</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">NNz</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">se</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">ww</span><span class="p">[</span><span class="n">ifind</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">NNz</span><span class="p">[</span><span class="n">zdo</span><span class="p">])</span>  <span class="c1"># Standard error</span>
+                    <span class="n">ci</span> <span class="o">=</span> <span class="n">se</span> <span class="o">*</span> <span class="n">stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">((</span><span class="mi">1</span> <span class="o">+</span> <span class="n">CIlimits</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">NNz</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Confidence interval based on CIlimits</span>
+                    <span class="n">w_lower</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">meanw</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">-</span> <span class="n">ci</span>
+                    <span class="n">w_upper</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">meanw</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">+</span> <span class="n">ci</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">w_lower</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="n">w_upper</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">meanw</span><span class="p">[</span><span class="n">zdo</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+
+    <span class="c1"># Package the outputs into an xarray dataset</span>
+    <span class="n">ds_out</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;meanw&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;zgrid&quot;</span><span class="p">],</span> <span class="n">meanw</span><span class="p">),</span>
+            <span class="s2">&quot;w_lower&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;zgrid&quot;</span><span class="p">],</span> <span class="n">w_lower</span><span class="p">),</span>
+            <span class="s2">&quot;w_upper&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;zgrid&quot;</span><span class="p">],</span> <span class="n">w_upper</span><span class="p">),</span>
+            <span class="s2">&quot;NNz&quot;</span><span class="p">:</span> <span class="p">([</span><span class="s2">&quot;zgrid&quot;</span><span class="p">],</span> <span class="n">NNz</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">coords</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;zgrid&quot;</span><span class="p">:</span> <span class="n">zgrid</span>
+        <span class="p">},</span>
+        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;CIlimits&quot;</span><span class="p">:</span> <span class="n">CIlimits</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ds_out</span></div>
+
+
+
+<div class="viewcode-block" id="quant_hysteresis">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.quant_hysteresis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">quant_hysteresis</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">&#39;DOXY&#39;</span><span class="p">,</span> <span class="n">v_res</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes up and downcast averages for a specific variable</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least depth, profile_number and the selected variable.</span>
+<span class="sd">        Data should not be gridded.</span>
+<span class="sd">    var: Selected variable</span>
+<span class="sd">    v_res: Vertical resolution for the gridding</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">   df: pandas dataframe containing dive and climb average over depth for the selected variable. A third column contains the depth values</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;PROFILE_NUMBER&#39;</span><span class="p">,</span> <span class="s1">&#39;DEPTH&#39;</span><span class="p">,</span> <span class="n">var</span><span class="p">])</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Horizontal resolution</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">v_res</span>  <span class="c1"># Vertical resolution</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+        <span class="n">varG</span><span class="p">,</span> <span class="n">profG</span><span class="p">,</span> <span class="n">depthG</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">construct_2dgrid</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="p">,</span> <span class="n">ds</span><span class="o">.</span><span class="n">DEPTH</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">p</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">dive</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">varG</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Dive</span>
+        <span class="n">climb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">varG</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Climb</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;dive&#39;</span><span class="p">:</span> <span class="n">dive</span><span class="p">,</span> <span class="s1">&#39;climb&#39;</span><span class="p">:</span> <span class="n">climb</span><span class="p">,</span> <span class="s1">&#39;depth&#39;</span><span class="p">:</span> <span class="n">depthG</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]})</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="compute_hyst_stat">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.compute_hyst_stat">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_hyst_stat</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">&#39;DOXY&#39;</span><span class="p">,</span> <span class="n">v_res</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes some basic statistics for the differences between climb and dive data</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least depth, profile_number and the selected variable. Data should not be gridded.</span>
+<span class="sd">    var: Selected variable</span>
+<span class="sd">    v_res: Vertical resolution for the gridding</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    diff: difference between upcast and downcast</span>
+<span class="sd">    err: Percentage error of the dive-climb difference. One value per depth step</span>
+<span class="sd">    rms: Root Mean Square of the difference in values between dive and climb</span>
+<span class="sd">    df: pandas dataframe containing dive and climb average over depth for the selected variable. A third column contains the depth values</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara  Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">quant_hysteresis</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">var</span><span class="p">,</span> <span class="n">v_res</span><span class="o">=</span><span class="n">v_res</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">RuntimeWarning</span><span class="p">)</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">dive</span> <span class="o">-</span> <span class="n">df</span><span class="o">.</span><span class="n">climb</span><span class="p">)</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="p">(</span><span class="n">diff</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">([</span><span class="n">df</span><span class="o">.</span><span class="n">dive</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">climb</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">dive</span> <span class="o">-</span> <span class="n">df</span><span class="o">.</span><span class="n">climb</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">df</span><span class="p">,</span> <span class="n">diff</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">rms</span></div>
+
+
+
+<div class="viewcode-block" id="compute_prof_duration">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.compute_prof_duration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_prof_duration</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span><span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes some basic statistics for the differences between climb and dive data</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least time and profile_number. Data should not be gridded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df: pandas dataframe containing the profile number and the duration of that profile in minutes</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara  Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;PROFILE_NUMBER&#39;</span><span class="p">,</span> <span class="s1">&#39;TIME&#39;</span><span class="p">])</span>
+    <span class="n">deltat</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">deltat_min</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">to_timedelta</span><span class="p">(</span><span class="n">deltat</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;timedelta64[s]&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="mi">60</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;profile_num&#39;</span><span class="p">:</span> <span class="n">deltat</span><span class="o">.</span><span class="n">PROFILE_NUMBER</span><span class="p">,</span> <span class="s1">&#39;profile_duration&#39;</span><span class="p">:</span> <span class="n">deltat_min</span><span class="p">})</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="find_outlier_duration">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.find_outlier_duration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_outlier_duration</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">rolling</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes some basic statistics for the differences between climb and dive data</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df: pandas dataframe containing the profile number and the duration of that profile in minutes</span>
+<span class="sd">    rolling: window size for the rolling mean</span>
+<span class="sd">    std: number of standard deviations to use for &#39;odd&#39; profile duration</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    The function prints a statement in case there are profiles with &#39;odd&#39; duration,</span>
+<span class="sd">    rolling_mean: Rolling mean of profile duration computed with the set window</span>
+<span class="sd">    overt_prof: Profiles where the duration is above the set rolling mean with added standard deviation</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara  Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rolling_mean</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;profile_duration&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">rolling</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">overtime</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;profile_duration&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">rolling_mean</span> <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rolling_mean</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span>
+                <span class="n">df</span><span class="p">[</span><span class="s1">&#39;profile_duration&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">rolling_mean</span> <span class="o">-</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rolling_mean</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span><span class="p">)))</span>
+    <span class="n">overt_prof</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;profile_num&#39;</span><span class="p">][</span><span class="n">overtime</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">overtime</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;There are </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">overtime</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s1"> profiles where the duration differs by </span><span class="si">{</span><span class="n">std</span><span class="si">}</span><span class="s1"> standard deviations of the nearby </span><span class="si">{</span><span class="n">rolling</span><span class="si">}</span><span class="s1"> profiles. Further checks are recommended&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rolling_mean</span><span class="p">,</span> <span class="n">overt_prof</span></div>
+
+
+<div class="viewcode-block" id="compute_global_range">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.compute_global_range">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_global_range</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">&#39;DOXY&#39;</span><span class="p">,</span> <span class="n">min_val</span><span class="o">=-</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_val</span><span class="o">=</span><span class="mi">600</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies a gross filter to the dataset by removing observations outside the specified global range.</span>
+
+<span class="sd">    This function checks if any values of the specified variable (`var`) fall outside the provided</span>
+<span class="sd">    range `[min_val, max_val]`. If a value is out of the specified range, it is excluded from the</span>
+<span class="sd">    output. The function returns the filtered dataset with the out-of-range values removed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : The xarray Dataset containing the variable to be filtered.</span>
+
+<span class="sd">    var : The name of the variable to apply the range filter on. Default is &#39;DOXY&#39;.</span>
+
+<span class="sd">    min_val : The minimum allowable value for the variable. Default is -5.</span>
+
+<span class="sd">    max_val : The maximum allowable value for the variable. Default is 600.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    xarray.DataArray</span>
+<span class="sd">        A filtered DataArray containing only the values of the specified variable</span>
+<span class="sd">        within the range `[min_val, max_val]`. Values outside this range are dropped.</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Chiara Monforte</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="n">var</span><span class="p">])</span>
+    <span class="n">out_range</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">&lt;</span><span class="n">min_val</span> <span class="p">)</span><span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">&gt;</span><span class="n">max_val</span> <span class="p">))</span>
+    <span class="k">return</span> <span class="n">out_range</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="s1">&#39;N_MEASUREMENTS&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="max_depth_per_profile">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.tools.max_depth_per_profile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">max_depth_per_profile</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function computes the maximum depth for each profile in the dataset</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds: xarray on OG1 format containing at least depth and profile_number. Data</span>
+<span class="sd">    should not be gridded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    max_depths: pandas dataframe containing the profile number and the maximum depth of that profile</span>
+
+<span class="sd">    Original author</span>
+<span class="sd">    ----------------</span>
+<span class="sd">    Till Moritz</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_depths</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;PROFILE_NUMBER&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;DEPTH&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="c1">### add the unit to the dataarray</span>
+    <span class="n">max_depths</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;DEPTH&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">max_depths</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Eleanor Frajka-Williams, Chiara Monforte, Callum Rollo.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
