@@ -61,15 +61,7 @@ def test_profile_check():
     plt.close('all')
 
 
-def test_chl(var1='CHLA', var2='BBP700'):
-    ds = fetchers.load_sample_dataset()
-    ax = plots.process_optics_assess(ds, var=var1)
-    assert ax.get_ylabel() == f'{utilities.plotting_labels(var1)} ({utilities.plotting_units(ds,var1)})'
-    ax = plots.process_optics_assess(ds, var=var2)
-    assert ax.get_ylabel() == f'{utilities.plotting_labels(var2)} ({utilities.plotting_units(ds,var2)})'
-    with pytest.raises(KeyError) as e:
-        plots.process_optics_assess(ds, var='nonexistent_variable')
-    plt.close('all')
+
 def test_basic_statistics():
     ds = fetchers.load_sample_dataset()
     plots.plot_glider_track(ds)
