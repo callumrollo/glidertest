@@ -34,31 +34,6 @@ def test_up_down_bias(v_res=1):
     plt.close('all')
 
 
-def test_chl(var1='CHLA', var2='BBP700'):
-    ds = fetchers.load_sample_dataset()
-    ax = plots.process_optics_assess(ds, var=var1)
-    assert ax.get_ylabel() == f'{utilities.plotting_labels(var1)} ({utilities.plotting_units(ds,var1)})'
-    ax = plots.process_optics_assess(ds, var=var2)
-    assert ax.get_ylabel() == f'{utilities.plotting_labels(var2)} ({utilities.plotting_units(ds,var2)})'
-    with pytest.raises(KeyError) as e:
-        plots.process_optics_assess(ds, var='nonexistent_variable')
-    plt.close('all')
-
-
-def test_quench_sequence(ylim=45):
-    ds = fetchers.load_sample_dataset()
-    if not "TIME" in ds.indexes.keys():
-        ds = ds.set_xindex('TIME')
-    fig, ax = plt.subplots()
-    plots.plot_quench_assess(ds, 'CHLA', ax, ylim=ylim)
-    assert ax.get_ylabel() == 'Depth (m)'
-    assert ax.get_ylim() == (ylim, -ylim / 30)
-
-    fig, ax = plots.plot_daynight_avg(ds, var='TEMP')
-    assert ax.get_ylabel() == 'Depth (m)'
-    assert ax.get_xlabel() == f'{utilities.plotting_labels("TEMP")} ({utilities.plotting_units(ds,"TEMP")})'
-    plt.close('all')
-
 
 def test_temporal_drift(var='DOXY'):
     ds = fetchers.load_sample_dataset()
@@ -86,6 +61,15 @@ def test_profile_check():
     plt.close('all')
 
 
+def test_chl(var1='CHLA', var2='BBP700'):
+    ds = fetchers.load_sample_dataset()
+    ax = plots.process_optics_assess(ds, var=var1)
+    assert ax.get_ylabel() == f'{utilities.plotting_labels(var1)} ({utilities.plotting_units(ds,var1)})'
+    ax = plots.process_optics_assess(ds, var=var2)
+    assert ax.get_ylabel() == f'{utilities.plotting_labels(var2)} ({utilities.plotting_units(ds,var2)})'
+    with pytest.raises(KeyError) as e:
+        plots.process_optics_assess(ds, var='nonexistent_variable')
+    plt.close('all')
 def test_basic_statistics():
     ds = fetchers.load_sample_dataset()
     plots.plot_glider_track(ds)
@@ -128,6 +112,22 @@ def test_sop():
     plots.plot_ioosqc(spike, suspect_threshold=[25], fail_threshold=[50], title='Spike test DOXY')
     flat = qartod.flat_line_test(ds.DOXY, ds.TIME, 1, 2, 0.001)
     plots.plot_ioosqc(flat, suspect_threshold=[0.01], fail_threshold=[0.1], title='Flat test DOXY')
+    plt.close('all')
+
+
+
+def test_quench_sequence(ylim=45):
+    ds = fetchers.load_sample_dataset()
+    if not "TIME" in ds.indexes.keys():
+        ds = ds.set_xindex('TIME')
+    fig, ax = plt.subplots()
+    plots.plot_quench_assess(ds, 'CHLA', ax, ylim=ylim)
+    assert ax.get_ylabel() == 'Depth (m)'
+    assert ax.get_ylim() == (ylim, -ylim / 30)
+
+    fig, ax = plots.plot_daynight_avg(ds, var='TEMP')
+    assert ax.get_ylabel() == 'Depth (m)'
+    assert ax.get_xlabel() == f'{utilities.plotting_labels("TEMP")} ({utilities.plotting_units(ds,"TEMP")})'
     plt.close('all')
 
 
