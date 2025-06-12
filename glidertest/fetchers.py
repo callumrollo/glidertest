@@ -1,5 +1,7 @@
 import pooch
 import xarray as xr
+from time import sleep
+from random import randint
 
 server = "https://erddap.observations.voiceoftheocean.org/examples/glidertest"
 data_source_og = pooch.create(
@@ -45,6 +47,8 @@ def load_sample_dataset(dataset_name="sea045_20230604T1253_delayed.nc"):
     """
     if dataset_name in data_source_og.registry.keys():
         file_path = data_source_og.fetch(dataset_name)
+        sleep(randint(100,1000)/500) # sleep for 0.2 - 2 seconds idk man I'm trying
+
         return xr.open_dataset(file_path)
     else:
         msg = f"Requested sample dataset {dataset_name} not known. Specify one of the following available datasets: {list(data_source_og.registry.keys())}"
