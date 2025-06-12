@@ -36,7 +36,7 @@ def load_sample_dataset(dataset_name="sea045_20230604T1253_delayed.nc"):
     Raises
     ------
     ValueError: 
-        If the requests dataset is not known, raises a value error
+        If the requests dataset is not known, raises a value error.
 
     Returns
     -------
@@ -49,3 +49,4 @@ def load_sample_dataset(dataset_name="sea045_20230604T1253_delayed.nc"):
     else:
         msg = f"Requested sample dataset {dataset_name} not known. Specify one of the following available datasets: {list(data_source_og.registry.keys())}"
         raise KeyError(msg)
+
