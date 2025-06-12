@@ -81,3 +81,4 @@ def test_mld():
 def test_add_sigma1():
     ds = fetchers.load_sample_dataset()
     tools.add_sigma_1(ds)
+    
