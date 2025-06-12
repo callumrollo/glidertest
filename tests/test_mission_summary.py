@@ -3,24 +3,28 @@ import matplotlib
 from pathlib import Path
 
 matplotlib.use('agg')  # use agg backend to prevent creating plot windows during tests
+ds = fetchers.load_sample_dataset()
+
 
 def test_qc_checks():
-    ds = fetchers.load_sample_dataset()
     gr, spike, flat, err_mean,err_range = summary_sheet.qc_checks(ds, var='PSAL')
+
+
 def test_tableqc():
-    ds = fetchers.load_sample_dataset()
     strgr = ['Global range', '✓', '✓', '✓', '✓']
     strst = ['Spike test', '✓', '✓', '✓', '✓']
     strft = ['Flat test', '✓', '✓', '✓', '✓']
     strhy = ['Hysteresis', '✓', '✓', '✓', '✓']
     strdr = ['Drift', '✓', '✓', '✓', '✓']
     summary_sheet.fill_str(strgr, strst, strft, strhy, strdr,ds, var='TEMP')
+
+
 def test_phrase_duration_check():
-    ds = fetchers.load_sample_dataset()
     summary_sheet.phrase_numberprof_check(ds)
     summary_sheet.phrase_duration_check(ds)
+
+
 def test_docs():
-    ds = fetchers.load_sample_dataset()
     library_dir = Path(__file__).parent.parent.absolute()
     example_dir = library_dir / 'tests/example-summarysheet'
     if not Path(example_dir).is_dir():
@@ -34,8 +38,8 @@ def test_docs():
     summary_sheet.create_optics_doc(ds, example_dir)
     summary_sheet.mission_report(ds, example_dir, type='Optics')
 
+
 def test_optics_func():
-    ds = fetchers.load_sample_dataset()
     summary_sheet.optics_avaialble_data(ds)
     summary_sheet.optics_negative_check(ds)
     summary_sheet.optics_negative_string(ds)
