@@ -6,13 +6,12 @@ on:
       - '**.py'
       - '**.ipynb'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   run:
     runs-on: ${{ matrix.os }}
+    concurrency:
+      group: example-group
+      cancel-in-progress: true
     strategy:
       matrix:
         python-version: ["3.9", "3.11", "3.13"]
