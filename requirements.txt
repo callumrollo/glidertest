@@ -19,3 +19,4 @@ pypandoc
 rstcloth
 h5netcdf
 h5py
+fpdf2

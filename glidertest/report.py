@@ -1,21 +1,15 @@
 from fpdf import FPDF
 from pathlib import Path
-import fetchers
-import plots
+from glidertest import fetchers
+from glidertest import summary_sheet as gss
+from glidertest import plots as gtplots
 import matplotlib.pyplot as plt
+import gsw
 import glob
 import os
 import matplotlib
+import xarray as xr
 matplotlib.use('agg')  # use agg backend to prevent creating plot windows during tests
-
-
-def simple_report():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font('helvetica', size=12)
-    pdf.cell(text="hello world")
-    pdf.output("hello_world.pdf")
-
 
 
 def _image_aspect(path: str, default: float = 0.6) -> float:
@@ -68,17 +62,18 @@ def glidertest_section(pdf, data, outdir: str) -> None:
 
     Runs plotting routines from `glidertest` and inserts them into the document.
 
-    clone glidertest, then install with `pip install -e .` until versioning is sorted out.
     """
-    from glidertest import summary_sheet as gss
-    from glidertest import plots as gtplots
+
+    if 'PSAL' not in data.variables:
+        data['PSAL'] = data['CNDC'].copy()
+        data['PSAL'].values = gsw.SP_from_C(data.CNDC, data.TEMP, data.PRES)
+    outdir = outdir + '/'
 
     print("Glidertest section is running - glidertest has been imported.")
 
     pdf.add_page()
     pdf.section_heading("Glidertest Plots: Basic Variables")
-    if "PSAL" not in data.data_vars:
-        data["PSAL"] = data["PRAC_SALINITY"]
+
 
     fig, __ = gtplots.plot_basic_vars(ds=data)
     fig_name = f"{outdir}_basic_vars.png"
@@ -162,10 +157,21 @@ def glidertest_section(pdf, data, outdir: str) -> None:
         )
 
 def aaron_main():
-    ds = fetchers.load_sample_dataset()
-    pdf = reportPDF()
-    glidertest_section(pdf, ds, outdir='report')
-    pdf.output("hello_world.pdf")
+    datasets_in = list(Path('/data/data_l0_pyglider/OG_nrt').rglob('*_R.nc'))
+    datasets_in.sort()
+    for nc in datasets_in:
+        try:
+            
+            ds = xr.open_dataset(nc)
+            pdf = reportPDF()
+            base_dir = '/data/reports'
+            outdir = f'{base_dir}/{ds.attrs["dataset_id"]}'
+            if not Path(outdir).exists():
+                Path(outdir).mkdir(parents=True)
+            glidertest_section(pdf, ds, outdir=outdir)
+            pdf.output(f'{base_dir}/{ds.attrs["dataset_id"]}.pdf')
+        except:
+            print(f"FAIL {nc}")
 
 
 if __name__ == '__main__':

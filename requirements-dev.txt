@@ -25,3 +25,4 @@ ipywidgets
 pypandoc
 h5netcdf
 h5py
+fpdf2
