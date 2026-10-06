@@ -28,9 +28,9 @@ def mission_map(ds_list):
     if type(ds_list) is not list:
         ds_list = [ds_list]
     for ds in ds_list:
-        _check_necessary_variables(ds, ["LONGITUDE", "LATITUDE", "DIVE_NUM"])
-    df = ds.to_pandas()[["LONGITUDE", "LATITUDE", "DIVE_NUM"]].groupby("DIVE_NUM").median()
-    m = folium.Map(location=[df.LATITUDE.mean(), df.LONGITUDE.mean()], zoom_start=8, tiles="cartodb positron")
+        _check_necessary_variables(ds, ["LON", "LAT", "DIVE_NUMBER"])
+    df = ds.to_pandas()[["LON", "LAT", "DIVE_NUMBER"]].groupby("DIVE_NUMBER").median()
+    m = folium.Map(location=[df.LAT.mean(), df.LON.mean()], zoom_start=8, tiles="cartodb positron")
     folium.WmsTileLayer(
         url="https://ows.emodnet-bathymetry.eu/wms",
         layers='mean_atlas_land',
@@ -38,13 +38,13 @@ def mission_map(ds_list):
     ).add_to(m)
     color_cycle = ["red", "yellow", "green", "black", "pink"]
     for i, ds in enumerate(ds_list):
-        df = ds.to_pandas()[["LONGITUDE", "LATITUDE", "DIVE_NUM"]].groupby("DIVE_NUM").median()
+        df = ds.to_pandas()[["LON", "LAT", "DIVE_NUMBER"]].groupby("DIVE_NUMBER").median()
         df = df.dropna()
-        df_points = ds.to_pandas()[["LONGITUDE", "LATITUDE"]].dropna()
-        coordinates = [[lat, lon] for lat, lon in zip(df_points['LATITUDE'], df_points['LONGITUDE'])]
+        df_points = ds.to_pandas()[["LON", "LAT"]].dropna()
+        coordinates = [[lat, lon] for lat, lon in zip(df_points['LAT'], df_points['LON'])]
         if len(coordinates) > 5000:
             coordinates = coordinates[::int(np.ceil(len(coordinates) / 5000))]
-        df['DIVE_NUM'] = df.index
+        df['DIVE_NUMBER'] = df.index
 
         folium.PolyLine(
             locations=coordinates,
@@ -55,8 +55,8 @@ def mission_map(ds_list):
 
         for j, row in df.iterrows():
             folium.CircleMarker(
-                location=[row['LATITUDE'], row['LONGITUDE']],
-                tooltip=f"Dive {int(row['DIVE_NUM'])}",
+                location=[row['LAT'], row['LON']],
+                tooltip=f"Dive {int(row['DIVE_NUMBER'])}",
                 color= 'black',
                 fillOpacity= 1,
                 fillColor= color_cycle[i],

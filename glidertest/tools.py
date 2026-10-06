@@ -17,7 +17,7 @@ def quant_updown_bias(ds, var='PSAL', v_res=1):
     Parameters
     ----------
     ds: Dataset.xarray 
-        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LATITUDE, LONGITUDE,** and the selected variable.  
+        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LAT, LON,** and the selected variable.  
         Data should **not** be gridded.
     var: str, optional, default='PSAL'
         Selected variable.
@@ -107,7 +107,7 @@ def compute_daynight_avg(ds, sel_var='CHLA', start_time=None, end_time=None, sta
     Parameters
     ----------
     ds : xarray.Dataset  
-        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LATITUDE, LONGITUDE,** and the selected variable.  
+        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LAT, LON,** and the selected variable.  
         Data should **not** be gridded.  
     sel_var : str, optional, default='CHLA'  
         The variable for which day and night averages will be computed.  
@@ -156,7 +156,7 @@ def compute_daynight_avg(ds, sel_var='CHLA', start_time=None, end_time=None, sta
         ds_sel = ds.sel(TIME=slice(t1,t2))
     else:
         ds_sel = ds.sel(TIME=slice(start_time, end_time))
-    sunrise, sunset = utilities.compute_sunset_sunrise(ds_sel.TIME, ds_sel.LATITUDE, ds_sel.LONGITUDE)
+    sunrise, sunset = utilities.compute_sunset_sunrise(ds_sel.TIME, ds_sel.LAT, ds_sel.LON)
 
     # creating batches where one batch is a night and the following day
     day = (ds_sel.TIME > sunrise) & (ds_sel.TIME < sunset)
@@ -229,7 +229,7 @@ def calc_w_meas(ds):
     utilities._check_necessary_variables(ds, ['TIME'])
     # Ensure inputs are numpy arrays
     time = ds.TIME.values
-    if 'DEPTH_Z' not in ds.variables and all(var in ds.variables for var in ['PRES', 'LATITUDE', 'LONGITUDE']):
+    if 'DEPTH_Z' not in ds.variables and all(var in ds.variables for var in ['PRES', 'LAT', 'LON']):
         ds = utilities.calc_DEPTH_Z(ds)
     depth = ds.DEPTH_Z.values
 
@@ -320,11 +320,11 @@ def quant_binavg(ds, var='VERT_CURR', zgrid=None, dz=None):
     # Calculate depth from pressure using gsw
     if 'DEPTH_Z' in ds:
         depth = ds.DEPTH_Z.values
-    elif 'LATITUDE' in ds:
-        latmean = np.nanmean(ds.LATITUDE)
+    elif 'LAT' in ds:
+        latmean = np.nanmean(ds.LAT)
         depth = gsw.z_from_p(press, lat=latmean)  # Assuming latitude is 0, adjust as necessary
     else: 
-        msg = f"DEPTH_Z and LATITUDE are missing. At least one of the two variables is needed."
+        msg = f"DEPTH_Z and LAT are missing. At least one of the two variables is needed."
         raise KeyError(msg)
 
     if zgrid is None:
@@ -596,7 +596,7 @@ def add_sigma_1(ds: xr.Dataset, var_sigma_1: str = "SIGMA_1") -> xr.Dataset:
     Parameters
     ----------
     ds : xr.Dataset
-        OG1-format dataset with required variables: DEPTH, TEMP, PSAL, LATITUDE, LONGITUDE.
+        OG1-format dataset with required variables: DEPTH, TEMP, PSAL, LAT, LON.
     var_sigma_1 : str, optional
         Name of the variable to be added to the dataset. Default is "SIGMA_1".
 
@@ -609,7 +609,7 @@ def add_sigma_1(ds: xr.Dataset, var_sigma_1: str = "SIGMA_1") -> xr.Dataset:
     -----
     Original author: Till Moritz
     """
-    required_vars = ['DEPTH', 'TEMP', 'PSAL', 'LATITUDE', 'LONGITUDE']
+    required_vars = ['DEPTH', 'TEMP', 'PSAL', 'LAT', 'LON']
     utilities._check_necessary_variables(ds, required_vars)
 
     if var_sigma_1 in ds:
@@ -620,8 +620,8 @@ def add_sigma_1(ds: xr.Dataset, var_sigma_1: str = "SIGMA_1") -> xr.Dataset:
     TEMP = ds['TEMP'].values
     PSAL = ds['PSAL'].values
     PRES = ds['DEPTH'].values
-    LAT = ds['LATITUDE'].values
-    LON = ds['LONGITUDE'].values
+    LAT = ds['LAT'].values
+    LON = ds['LON'].values
 
     # Filter valid entries
     valid = ~np.isnan(TEMP) & ~np.isnan(PSAL) & ~np.isnan(PRES) & ~np.isnan(LAT) & ~np.isnan(LON)

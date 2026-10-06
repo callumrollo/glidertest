@@ -63,7 +63,7 @@ def plot_updown_bias(ds: xr.Dataset, var='TEMP', v_res=1, ax: plt.Axes = None, *
     Parameters
     ----------
     ds: xarray.Dataset 
-        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LATITUDE, LONGITUDE,** and the selected variable.
+        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LAT, LON,** and the selected variable.
         Data should not be gridded.
     var: str, optional, default='TEMP'
         Selected variable
@@ -125,7 +125,7 @@ def plot_basic_vars(ds: xr.Dataset, v_res=1, start_prof=0, end_prof=-1, ax=None)
     ----------
 
     ds: xarray 
-        Dataset in **OG1 format**, containing at least **PROFILE_NUMBER, DEPTH, TEMP, PSAL, LATITUDE, LONGITUDE,** and the selected variable.
+        Dataset in **OG1 format**, containing at least **PROFILE_NUMBER, DEPTH, TEMP, PSAL, LAT, LON,** and the selected variable.
     v_res: float, default = 1
         Vertical resolution for the gridding. Horizontal resolution (by profile) is assumed to be 1
     start_prof: int
@@ -148,7 +148,7 @@ def plot_basic_vars(ds: xr.Dataset, v_res=1, start_prof=0, end_prof=-1, ax=None)
     -----
     Original Author: Chiara Monforte
     """
-    utilities._check_necessary_variables(ds, ['PROFILE_NUMBER', 'DEPTH', 'TEMP', 'PSAL', 'LATITUDE', 'LONGITUDE'])
+    utilities._check_necessary_variables(ds, ['PROFILE_NUMBER', 'DEPTH', 'TEMP', 'PSAL', 'LAT', 'LON'])
     ds = utilities._calc_teos10_variables(ds)
     p = 1
     z = v_res
@@ -409,7 +409,7 @@ def plot_quench_assess(ds: xr.Dataset, sel_var: str, ax: plt.Axes = None, start_
     Parameters
     ----------
     ds : xarray.Dataset  
-        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LATITUDE, LONGITUDE**, and the selected variable.
+        Dataset in **OG1 format**, containing at least **TIME, DEPTH, LAT, LON**, and the selected variable.
         Data **should not** be gridded.  
     sel_var : str  
         The selected variable to plot.  
@@ -468,7 +468,7 @@ def plot_quench_assess(ds: xr.Dataset, sel_var: str, ax: plt.Axes = None, start_
             msg = f"supplied limits start_time: {start_time} end_time: {end_time} do not overlap with dataset TIME range {str(ds.TIME.values.min())[:10]} - {str(ds.TIME.values.max())[:10]}"
             raise ValueError(msg)
 
-        sunrise, sunset = utilities.compute_sunset_sunrise(ds_sel.TIME, ds_sel.LATITUDE, ds_sel.LONGITUDE)
+        sunrise, sunset = utilities.compute_sunset_sunrise(ds_sel.TIME, ds_sel.LAT, ds_sel.LON)
         surf_chla= ds_sel[sel_var].where(ds_sel[sel_var].DEPTH < ylim).dropna(dim='N_MEASUREMENTS')
         logchla=np.log10(surf_chla.where((surf_chla>0)).dropna(dim='N_MEASUREMENTS'))
         c = ax.scatter(logchla.TIME, logchla.DEPTH, c=logchla, s=10, vmin=np.nanpercentile(logchla, 0.5),
@@ -629,7 +629,7 @@ def plot_glider_track(ds: xr.Dataset, ax: plt.Axes = None, **kw: dict) -> tuple(
     Parameters
     ----------
     ds : xarray.Dataset  
-        Dataset in **OG1 format**, containing at least **TIME, LATITUDE,** and **LONGITUDE**.  
+        Dataset in **OG1 format**, containing at least **TIME, LAT,** and **LON**.  
     ax : matplotlib.axes.Axes, optional  
         Axis to plot the data. If None, a new figure and axis will be created.  
     **kw : dict  
@@ -646,15 +646,15 @@ def plot_glider_track(ds: xr.Dataset, ax: plt.Axes = None, **kw: dict) -> tuple(
     -----
     Original Author: Eleanor Frajka-Williams
     """
-    utilities._check_necessary_variables(ds, ['TIME', 'LONGITUDE', 'LATITUDE'])
+    utilities._check_necessary_variables(ds, ['TIME', 'LON', 'LAT'])
     with plt.style.context(_style()):
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
         else:
             fig = plt.gcf()
 
-        latitudes = ds.LATITUDE.values
-        longitudes = ds.LONGITUDE.values
+        latitudes = ds.LAT.values
+        longitudes = ds.LON.values
         times = ds.TIME.values
 
         # Drop NaN values
@@ -948,7 +948,7 @@ def plot_ts(ds: xr.Dataset, percentile: list = [0.5,99.5], axs: plt.Axes = None,
     Parameters
     ----------
     ds : xarray.Dataset  
-        Dataset in **OG1 format**, containing at least **DEPTH, LONGITUDE, LATITUDE, TEMP and PSAL**. 
+        Dataset in **OG1 format**, containing at least **DEPTH, LON, LAT, TEMP and PSAL**. 
     percentile : list, optional
         The percentiles to use for filtering the data. Default is [0.5, 99.5].
     axs : matplotlib.axes.Axes, optional  
@@ -971,7 +971,7 @@ def plot_ts(ds: xr.Dataset, percentile: list = [0.5,99.5], axs: plt.Axes = None,
     -----
     Original Author: Eleanor Frajka-Williams
     """
-    utilities._check_necessary_variables(ds, ['DEPTH', 'LONGITUDE', 'LATITUDE', 'PSAL', 'TEMP'])
+    utilities._check_necessary_variables(ds, ['DEPTH', 'LON', 'LAT', 'PSAL', 'TEMP'])
     with plt.style.context(_style()):
         if axs is None:
             fig, ax = plt.subplots(2, 3)
@@ -988,7 +988,7 @@ def plot_ts(ds: xr.Dataset, percentile: list = [0.5,99.5], axs: plt.Axes = None,
 
         # Create a mask once for valid data points
         mask = np.isfinite(ds.TEMP.values) & np.isfinite(ds.PSAL.values)
-        temp, sal, depth, long, lat = (ds[var].values[mask] for var in ['TEMP', 'PSAL', 'DEPTH', 'LONGITUDE', 'LATITUDE'])
+        temp, sal, depth, long, lat = (ds[var].values[mask] for var in ['TEMP', 'PSAL', 'DEPTH', 'LON', 'LAT'])
 
         # Convert to Absolute Salinity (SA) and Conservative Temperature (CT)
         SA = gsw.SA_from_SP(sal, depth, long, lat)

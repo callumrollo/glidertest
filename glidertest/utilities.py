@@ -43,9 +43,9 @@ def _calc_teos10_variables(ds):
     :param ds:
     :return:
     """
-    _check_necessary_variables(ds, ['DEPTH', 'LONGITUDE', 'LATITUDE', 'TEMP', 'PSAL'])
+    _check_necessary_variables(ds, ['DEPTH', 'LON', 'LAT', 'TEMP', 'PSAL'])
     if 'DENSITY' not in ds.variables:
-        SA = gsw.SA_from_SP(ds.PSAL, ds.DEPTH, ds.LONGITUDE, ds.LATITUDE)
+        SA = gsw.SA_from_SP(ds.PSAL, ds.DEPTH, ds.LON, ds.LAT)
         CT = gsw.CT_from_t(SA, ds.TEMP, ds.DEPTH)
         ds['DENSITY'] = ('N_MEASUREMENTS', gsw.rho(SA, CT, ds.DEPTH).values)
     return ds
@@ -386,7 +386,7 @@ def calc_DEPTH_Z(ds):
     Parameters
     ----------
     ds: xarray.Dataset
-        The input dataset containing 'PRES', 'LATITUDE', and 'LONGITUDE' variables.
+        The input dataset containing 'PRES', 'LAT', and 'LON' variables.
     
     Returns
     -------
@@ -397,13 +397,13 @@ def calc_DEPTH_Z(ds):
     -----
     Original Author: Eleanor Frajka-Williams
     """
-    _check_necessary_variables(ds, ['PRES', 'LONGITUDE', 'LATITUDE'])
+    _check_necessary_variables(ds, ['PRES', 'LON', 'LAT'])
 
     # Initialize the new variable with the same dimensions as dive_num
     ds['DEPTH_Z'] = (['N_MEASUREMENTS'], np.full(ds.dims['N_MEASUREMENTS'], np.nan))
 
     # Calculate depth using gsw
-    depth = gsw.z_from_p(ds['PRES'], ds['LATITUDE'])
+    depth = gsw.z_from_p(ds['PRES'], ds['LAT'])
     ds['DEPTH_Z'] = depth
 
     # Assign the calculated depth to a new variable in the dataset
