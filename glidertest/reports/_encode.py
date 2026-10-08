@@ -50,13 +50,10 @@ def _manages_own_layout(fig: Any) -> bool:
     return any(ax.name == "polar" for ax in fig.axes)
 
 
-def _fig_to_base64(fig: Any, *, bbox_inches: str | None = None) -> str:
+def _fig_to_base64(fig: Any, *, bbox_inches: str = 'tight') -> str:
     """Render *fig* to a quantized PNG and return its base64 string.
 
-    By default (``bbox_inches=None``) saves the **full canvas** at
-    :data:`FIG_DPI`, so ``png_px == round(fig_in × dpi)`` exactly — the
-    displayed-type invariant that keeps figure text the same on-screen size
-    across slot figures.  Pass ``bbox_inches="tight"`` only for an aspect-locked
+    By default, ``bbox_inches="tight"`` works well for an aspect-locked
     figure that is exempt from that invariant (a map, a section) and that draws a
     decoration outside its fixed canvas — e.g. the all-sections overview map's
     legend anchored east of the axes, which the full canvas would otherwise clip.
