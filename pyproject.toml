@@ -30,6 +30,7 @@ dependencies = [
   "cmocean",
   "folium",
   "gsw",
+  "h5py",
   "h5netcdf",
   "ioos-qc",
   "ipython",
