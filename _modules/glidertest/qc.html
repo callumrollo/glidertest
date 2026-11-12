@@ -5,14 +5,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>glidertest.qc &mdash; glidertest 0.1.dev405+gebac6af9d documentation</title>
+  <title>glidertest.qc &mdash; glidertest 0.1.dev421+gad603b7a8 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=80e32537"></script>
+      <script src="../../_static/documentation_options.js?v=b93e0a17"></script>
       <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -48,16 +48,13 @@
 <p class="caption" role="heading"><span class="caption-text">Examples</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../demo-output.html">Glidertest demo</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../demo-output.html#1.-Load-dataset">1. Load dataset</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../demo-output.html#2.-General-mission-overview">2. General mission overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../demo-output.html#3.-Sensors-data-overview">3. Sensors data overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../demo-output.html#CTD">CTD</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://oceangliderscommunity.github.io/glidertest/_static/demo/index.html">Example HTML report</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../cli_reference.html">CLI reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../reports.html">The HTML report</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../config_reference.html">Report config (<code class="docutils literal notranslate"><span class="pre">-c</span></code>)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../glidertest.html">API reference</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Links</span></p>
@@ -103,40 +100,54 @@
 <span class="sd">Original Author: Chiara Monforte.</span>
 <span class="sd">"""</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ioos_qc</span><span class="w"> </span><span class="kn">import</span> <span class="n">qartod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ioos_qc.qartod</span><span class="w"> </span><span class="kn">import</span> <span class="n">QartodFlags</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ioos_qc.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">mapdates</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">glidertest</span><span class="w"> </span><span class="kn">import</span> <span class="n">tools</span><span class="p">,</span> <span class="n">utilities</span>
 
+<span class="c1">#: Built-in QARTOD thresholds per variable (the layer-1 defaults). A report config's ``qc:`` block is</span>
+<span class="c1">#: deep-merged over this by :func:`glidertest.config.loader.resolve_qc`; the resolved mapping, not this</span>
+<span class="c1">#: dict, is what the checks and plots read when a config is in play. The location test is driven by a</span>
+<span class="c1">#: configured ``region.bbox`` (no built-in default), so no ``location_test`` entry lives here.</span>
+<span class="c1">#: ``flat_line_test`` windows and tolerances are set per variable. The test flags a point when the</span>
+<span class="c1">#: value's range (max − min) over the trailing window stays below ``tolerance`` — so a *tighter*</span>
+<span class="c1">#: tolerance flags fewer points (only a near-constant, genuinely-stuck sensor), and a *longer* window</span>
+<span class="c1">#: flags fewer points (the value must stay flat for longer). The tolerance is in each variable's own</span>
+<span class="c1">#: stored units, chosen small so real variation is not read as flat: TEMP 0.0005 Celsius, PSAL 0.0005</span>
+<span class="c1">#: (practical salinity), DOXY 0.01 mmol m-3, CHLA 0.01 mg m-3. Windows: 30 s / 60 s for every variable —</span>
+<span class="c1">#: long enough to span several samples at a typical glider cadence (a few seconds), so a short uniform</span>
+<span class="c1">#: stretch is not read as flat, and an off-phase sensor is not flagged at nearly every point (#346).</span>
+<span class="c1">#: These are report defaults, not instrument specifications — adjust per deployment with a ``qc:``</span>
+<span class="c1">#: override; :func:`suggest_flat_line` suggests windows from the sampling.</span>
 <span class="n">configs</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">"TEMP"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"gross_range_test"</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">"suspect_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
         <span class="s2">"fail_span"</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span> <span class="mi">40</span><span class="p">],</span>
     <span class="p">},</span>
         <span class="s2">"spike_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">},</span>
-        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
-        <span class="s2">"location_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"bbox"</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">70</span><span class="p">]},</span>
+        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">},</span>
     <span class="p">},</span>
     <span class="s2">"PSAL"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"gross_range_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">38</span><span class="p">],</span> <span class="s2">"fail_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">41</span><span class="p">]},</span>
              <span class="s2">"spike_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">},</span>
-             <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
-             <span class="s2">"location_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"bbox"</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">70</span><span class="p">]},</span>
+             <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">},</span>
              <span class="p">},</span>
     <span class="s2">"DOXY"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"gross_range_test"</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">"suspect_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">350</span><span class="p">],</span>
         <span class="s2">"fail_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">500</span><span class="p">],</span>
     <span class="p">},</span>
         <span class="s2">"spike_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">50</span><span class="p">},</span>
-        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
-        <span class="s2">"location_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"bbox"</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">70</span><span class="p">]},</span>
+        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">},</span>
     <span class="p">},</span>
     <span class="s2">"CHLA"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"gross_range_test"</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">"suspect_span"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">15</span><span class="p">],</span>
         <span class="s2">"fail_span"</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>
     <span class="p">},</span>
         <span class="s2">"spike_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
-        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
-        <span class="s2">"location_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"bbox"</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">70</span><span class="p">]},</span>
+        <span class="s2">"flat_line_test"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"suspect_threshold"</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">"fail_threshold"</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span> <span class="s2">"tolerance"</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">},</span>
     <span class="p">},</span>
 <span class="p">}</span>
 
@@ -256,9 +267,17 @@
 
 
 
+<span class="c1">#: Hysteresis verdict thresholds, named so the report table and the verdict rule cannot drift (the</span>
+<span class="c1">#: table reads these constants, not ``hysteresis_verdict.__defaults__`` by position): a depth bin</span>
+<span class="c1">#: counts as exceeded above ``HYSTERESIS_PCT_THRESHOLD`` percent dive–climb error, and a variable is</span>
+<span class="c1">#: flagged when more than ``HYSTERESIS_BIN_THRESHOLD`` bins exceed it.</span>
+<span class="n">HYSTERESIS_PCT_THRESHOLD</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">HYSTERESIS_BIN_THRESHOLD</span> <span class="o">=</span> <span class="mi">5</span>
+
+
 <div class="viewcode-block" id="hysteresis_verdict">
 <a class="viewcode-back" href="../../glidertest.html#glidertest.qc.hysteresis_verdict">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">hysteresis_verdict</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">pct_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">bin_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hysteresis_verdict</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">pct_threshold</span><span class="o">=</span><span class="n">HYSTERESIS_PCT_THRESHOLD</span><span class="p">,</span> <span class="n">bin_threshold</span><span class="o">=</span><span class="n">HYSTERESIS_BIN_THRESHOLD</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Return ``(n_over, flagged)`` for a hysteresis dive-climb error array.</span>
 
 <span class="sd">    The single verdict rule shared by the RST summary (:func:`fill_str`) and the HTML report, so the</span>
@@ -291,7 +310,7 @@
 
 <div class="viewcode-block" id="qc_checks">
 <a class="viewcode-back" href="../../glidertest.html#glidertest.qc.qc_checks">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">qc_checks</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">qc_checks</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Run a series of basic quality control (global range, spike test, drift and hysteresis) checks on a selected variable in the dataset.</span>
 <span class="sd">    We use functions from glidertest.tools as well as ioos qartod.</span>
@@ -302,6 +321,9 @@
 <span class="sd">        Dataset in **OG1 format**, containing the selected variable and time information.</span>
 <span class="sd">    var : str, optional, default='TEMP'</span>
 <span class="sd">        Variable to perform QC checks on.</span>
+<span class="sd">    config : Mapping, optional</span>
+<span class="sd">        Resolved per-variable thresholds (see :func:`sample_tests`); ``None`` uses the built-in</span>
+<span class="sd">        :data:`configs`.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -318,10 +340,10 @@
 
 <span class="sd">    Notes</span>
 <span class="sd">    ------</span>
-<span class="sd">    - Thresholds for QC tests are taken from the global `configs` dictionary.</span>
+<span class="sd">    - Thresholds for QC tests are taken from *config* when given, else the global `configs` dictionary.</span>
 <span class="sd">    Original Author: Chiara  Monforte</span>
 <span class="sd">    """</span>
-    <span class="n">gr</span><span class="p">,</span> <span class="n">spike</span><span class="p">,</span> <span class="n">flat</span> <span class="o">=</span> <span class="n">sample_tests</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">)</span>
+    <span class="n">gr</span><span class="p">,</span> <span class="n">spike</span><span class="p">,</span> <span class="n">flat</span> <span class="o">=</span> <span class="n">sample_tests</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
     <span class="n">__</span><span class="p">,</span> <span class="n">__</span><span class="p">,</span> <span class="n">err_mean</span><span class="p">,</span> <span class="n">err_range</span><span class="p">,</span> <span class="n">__</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">compute_hyst_stat</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="n">var</span><span class="p">,</span> <span class="n">v_res</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">gr</span><span class="p">,</span> <span class="n">spike</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">err_mean</span><span class="p">,</span> <span class="n">err_range</span></div>
@@ -330,12 +352,11 @@
 
 <div class="viewcode-block" id="sample_tests">
 <a class="viewcode-back" href="../../glidertest.html#glidertest.qc.sample_tests">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">sample_tests</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_tests</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Run the three sample-wise QARTOD tests (gross range, spike, flat line) on *var*.</span>
 
 <span class="sd">    Split out of :func:`qc_checks` (which adds the hysteresis statistics) so the report's QC page</span>
 <span class="sd">    plots and the delivered-vs-glidertest matrix share one computation and one set of thresholds.</span>
-<span class="sd">    All thresholds come from the global :data:`configs` dictionary.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -343,6 +364,9 @@
 <span class="sd">        Dataset in **OG1 format**, containing *var* and ``TIME``.</span>
 <span class="sd">    var : str, optional, default='TEMP'</span>
 <span class="sd">        Variable to test.</span>
+<span class="sd">    config : Mapping, optional</span>
+<span class="sd">        Resolved per-variable thresholds (as from :func:`glidertest.config.loader.resolve_qc`); when</span>
+<span class="sd">        ``None`` the built-in :data:`configs` are used, so a bare call is unchanged.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -358,28 +382,87 @@
 <span class="sd">    Original Author: Chiara Monforte</span>
 <span class="sd">    """</span>
     <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="n">var</span><span class="p">,</span> <span class="s1">'TIME'</span><span class="p">])</span>
-    <span class="n">gr_cfg</span> <span class="o">=</span> <span class="n">configs</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="s1">'gross_range_test'</span><span class="p">]</span>
-    <span class="n">gr</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">compute_global_range</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">variable</span><span class="o">=</span><span class="n">var</span><span class="p">,</span> <span class="n">min_val</span><span class="o">=</span><span class="n">gr_cfg</span><span class="p">[</span><span class="s1">'suspect_span'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
-                                    <span class="n">max_val</span><span class="o">=</span><span class="n">gr_cfg</span><span class="p">[</span><span class="s1">'suspect_span'</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
-    <span class="n">sp_cfg</span> <span class="o">=</span> <span class="n">configs</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="s1">'spike_test'</span><span class="p">]</span>
-    <span class="n">spike</span> <span class="o">=</span> <span class="n">qartod</span><span class="o">.</span><span class="n">spike_test</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">suspect_threshold</span><span class="o">=</span><span class="n">sp_cfg</span><span class="p">[</span><span class="s1">'suspect_threshold'</span><span class="p">],</span>
-                              <span class="n">fail_threshold</span><span class="o">=</span><span class="n">sp_cfg</span><span class="p">[</span><span class="s1">'fail_threshold'</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s2">"average"</span><span class="p">)</span>
-    <span class="n">fl</span> <span class="o">=</span> <span class="n">configs</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="s1">'flat_line_test'</span><span class="p">]</span>
-    <span class="n">flat</span> <span class="o">=</span> <span class="n">qartod</span><span class="o">.</span><span class="n">flat_line_test</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">],</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="p">,</span> <span class="n">fl</span><span class="p">[</span><span class="s1">'suspect_threshold'</span><span class="p">],</span>
-                                 <span class="n">fl</span><span class="p">[</span><span class="s1">'fail_threshold'</span><span class="p">],</span> <span class="n">fl</span><span class="p">[</span><span class="s1">'tolerance'</span><span class="p">])</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span> <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">configs</span>
+    <span class="n">gr</span> <span class="o">=</span> <span class="n">gross_range_flags</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">spike</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">MISSING</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+    <span class="n">flat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">MISSING</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+    <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">ok</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+        <span class="n">sp_cfg</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="s1">'spike_test'</span><span class="p">]</span>
+        <span class="n">fl</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="s1">'flat_line_test'</span><span class="p">]</span>
+        <span class="n">pv</span><span class="p">,</span> <span class="n">pt</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">ds</span><span class="o">.</span><span class="n">TIME</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span>
+        <span class="n">spike</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">=</span> <span class="n">qartod</span><span class="o">.</span><span class="n">spike_test</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">suspect_threshold</span><span class="o">=</span><span class="n">sp_cfg</span><span class="p">[</span><span class="s1">'suspect_threshold'</span><span class="p">],</span>
+                                      <span class="n">fail_threshold</span><span class="o">=</span><span class="n">sp_cfg</span><span class="p">[</span><span class="s1">'fail_threshold'</span><span class="p">],</span>
+                                      <span class="n">method</span><span class="o">=</span><span class="n">sp_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'method'</span><span class="p">,</span> <span class="s2">"average"</span><span class="p">))</span>
+        <span class="n">flat</span><span class="p">[</span><span class="n">ok</span><span class="p">]</span> <span class="o">=</span> <span class="n">_flat_line_or_unknown</span><span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">pt</span><span class="p">,</span> <span class="n">fl</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">gr</span><span class="p">,</span> <span class="n">spike</span><span class="p">,</span> <span class="n">flat</span></div>
 
 
 
-<div class="viewcode-block" id="gross_range_mask">
-<a class="viewcode-back" href="../../glidertest.html#glidertest.qc.gross_range_mask">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">gross_range_mask</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Return a boolean per-sample mask of *var* values outside the gross-range suspect span.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_flat_line_or_unknown</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">fl</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Return flat-line flags for a variable's finite samples, or UNKNOWN where the test cannot run.</span>
 
-<span class="sd">    The one definition of "out of range" shared by the diagnostics-matrix count and the QC plots, so</span>
-<span class="sd">    the table and the plotted hits cannot diverge. NaN samples are not flagged (the comparison is</span>
-<span class="sd">    False for NaN). Returns an all-False mask when *var* has no ``gross_range_test`` suspect span in</span>
-<span class="sd">    :data:`configs`.</span>
+<span class="sd">    Returns ``UNKNOWN`` (2) for every sample in three cases the flat-line test cannot evaluate: fewer</span>
+<span class="sd">    than three samples (``ioos_qc`` would return ``GOOD``, claiming untested data is good); a median</span>
+<span class="sd">    step that truncates to zero seconds; or a suspect window shorter than two samples. The step is</span>
+<span class="sd">    computed the way ``ioos_qc`` computes its ``time_interval`` — via :func:`ioos_qc.utils.mapdates`</span>
+<span class="sd">    then truncation to whole seconds — so the zero-step guard fires exactly in the case that makes</span>
+<span class="sd">    ``flat_line_test`` divide by zero, and does not misfire on ``TIME`` stored as undecoded float</span>
+<span class="sd">    seconds. The short-window guard matches ``ioos_qc``'s own ``count = threshold // interval``: when</span>
+<span class="sd">    the suspect window holds fewer than two samples its value range is taken over a single point, so</span>
+<span class="sd">    every sample reads flat and the verdict is meaningless — not-evaluated is the honest result. (The</span>
+<span class="sd">    zero-step truncation is upstream: ``ioos_qc`` truncates a sub-second median to zero; see</span>
+<span class="sd">    https://github.com/ioos/ioos_qc. Choosing windows that suit a variable's cadence is a separate</span>
+<span class="sd">    follow-up.)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    vals : numpy.ndarray</span>
+<span class="sd">        The variable's finite values.</span>
+<span class="sd">    times : numpy.ndarray</span>
+<span class="sd">        ``TIME`` values of the same samples.</span>
+<span class="sd">    fl : Mapping</span>
+<span class="sd">        The variable's ``flat_line_test`` thresholds (``suspect_threshold``, ``fail_threshold``,</span>
+<span class="sd">        ``tolerance``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Flat-line flags, one per sample.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Original Author: Eleanor Frajka-Williams.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">vals</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">mapdates</span><span class="p">(</span><span class="n">times</span><span class="p">)))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"timedelta64[s]"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">step</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+    <span class="n">window_samples</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fl</span><span class="p">[</span><span class="s1">'suspect_threshold'</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="n">step</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">)))</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">window_samples</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">qartod</span><span class="o">.</span><span class="n">flat_line_test</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">fl</span><span class="p">[</span><span class="s1">'suspect_threshold'</span><span class="p">],</span>
+                                 <span class="n">fl</span><span class="p">[</span><span class="s1">'fail_threshold'</span><span class="p">],</span> <span class="n">fl</span><span class="p">[</span><span class="s1">'tolerance'</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="gross_range_flags">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.qc.gross_range_flags">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">gross_range_flags</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Return graded gross-range QARTOD flags for *var* (1 good, 3 suspect, 4 fail, 9 missing).</span>
+
+<span class="sd">    Wraps :func:`ioos_qc.qartod.gross_range_test` so the gross-range verdict grades the same way the</span>
+<span class="sd">    spike and flat-line tests do — all three go through ``ioos_qc``. A value inside the suspect span is</span>
+<span class="sd">    GOOD (1), outside the suspect span but inside the fail span is SUSPECT (3), outside the fail span is</span>
+<span class="sd">    FAIL (4), and NaN is MISSING (9).</span>
+
+<span class="sd">    Two config problems are handled loudly rather than silently, both via :mod:`warnings`. When *var*</span>
+<span class="sd">    has no ``fail_span`` there is nothing to grade against, so the test cannot be evaluated: finite</span>
+<span class="sd">    samples are flagged NOT_EVALUATED (2), not GOOD, so a missing span never reads as a passing verdict.</span>
+<span class="sd">    When the ``suspect_span`` is not nested inside the ``fail_span`` (which :func:`ioos_qc.qartod.gross_range_test`</span>
+<span class="sd">    rejects with a ``ValueError``) the suspect span is dropped and grading proceeds on the fail span</span>
+<span class="sd">    alone, rather than crashing the caller on one misconfigured variable.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -387,21 +470,118 @@
 <span class="sd">        Dataset in **OG1 format**, containing *var*.</span>
 <span class="sd">    var : str, optional, default='TEMP'</span>
 <span class="sd">        Variable to test.</span>
+<span class="sd">    config : Mapping, optional</span>
+<span class="sd">        Resolved per-variable thresholds (see :func:`sample_tests`); ``None`` uses the built-in</span>
+<span class="sd">        :data:`configs`.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    numpy.ndarray</span>
-<span class="sd">        Boolean mask, True where the value is below the span minimum or above its maximum.</span>
+<span class="sd">        QARTOD flags per sample, length ``N_MEASUREMENTS``: 1 good, 2 not evaluated (no fail span),</span>
+<span class="sd">        3 suspect, 4 fail, 9 missing.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Original Author: Eleanor Frajka-Williams.</span>
+<span class="sd">    """</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span> <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">configs</span>
+    <span class="n">gr</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'gross_range_test'</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">fail</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'fail_span'</span><span class="p">)</span>
+    <span class="n">suspect</span> <span class="o">=</span> <span class="n">gr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'suspect_span'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">fail</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"gross_range_flags: </span><span class="si">{</span><span class="n">var</span><span class="si">!r}</span><span class="s2"> has no 'fail_span' in its gross_range_test config; "</span>
+            <span class="s2">"the gross-range test cannot be graded, so finite samples are flagged NOT_EVALUATED (2)."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span>
+        <span class="n">flags</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">v</span><span class="p">)]</span> <span class="o">=</span> <span class="n">QartodFlags</span><span class="o">.</span><span class="n">MISSING</span>
+        <span class="k">return</span> <span class="n">flags</span>
+    <span class="k">if</span> <span class="n">suspect</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">fail</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">suspect</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">suspect</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">fail</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"gross_range_flags: </span><span class="si">{</span><span class="n">var</span><span class="si">!r}</span><span class="s2"> suspect_span </span><span class="si">{</span><span class="n">suspect</span><span class="si">}</span><span class="s2"> is not nested within fail_span </span><span class="si">{</span><span class="n">fail</span><span class="si">}</span><span class="s2">; "</span>
+            <span class="s2">"ignoring suspect_span and grading on the fail span alone."</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">suspect</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">qartod</span><span class="o">.</span><span class="n">gross_range_test</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">fail_span</span><span class="o">=</span><span class="n">fail</span><span class="p">,</span> <span class="n">suspect_span</span><span class="o">=</span><span class="n">suspect</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">'uint8'</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="gross_range_mask">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.qc.gross_range_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">gross_range_mask</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="s1">'TEMP'</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Return a boolean per-sample mask of *var* values outside the gross-range **suspect** span.</span>
+
+<span class="sd">    The one definition of "out of range" shared by the diagnostics-matrix count and the QC plots, so</span>
+<span class="sd">    the table and the plotted hits cannot diverge. A thin wrapper over :func:`gross_range_flags`: True</span>
+<span class="sd">    where the graded flag is suspect (3) or fail (4). NaN samples (flag 9) are not flagged, and a</span>
+<span class="sd">    variable with no ``fail_span`` in the thresholds is all-False (finite samples are flag 2, not</span>
+<span class="sd">    evaluated; missing samples are flag 9) — a missing span never reads as an out-of-range hit.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        Dataset in **OG1 format**, containing *var*.</span>
+<span class="sd">    var : str, optional, default='TEMP'</span>
+<span class="sd">        Variable to test.</span>
+<span class="sd">    config : Mapping, optional</span>
+<span class="sd">        Resolved per-variable thresholds (see :func:`sample_tests`); ``None`` uses the built-in</span>
+<span class="sd">        :data:`configs`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        Boolean mask, True where the value is outside the suspect span (graded flag 3 or 4).</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
 <span class="sd">    Original Author: Eleanor Frajka-Williams</span>
 <span class="sd">    """</span>
-    <span class="n">span</span> <span class="o">=</span> <span class="n">configs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'gross_range_test'</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'suspect_span'</span><span class="p">)</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">span</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">v</span> <span class="o">&lt;</span> <span class="n">span</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span> <span class="p">(</span><span class="n">v</span> <span class="o">&gt;</span> <span class="n">span</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span></div>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">gross_range_flags</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="region_test">
+<a class="viewcode-back" href="../../glidertest.html#glidertest.qc.region_test">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">region_test</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Flag each sample by whether its position lies inside the configured region box.</span>
+
+<span class="sd">    glidertest's own region check: ``ioos_qc`` 3.0.0's ``location_test`` has no bounding box (it</span>
+<span class="sd">    checks only the global sane bounds lon [-180, 180], lat [-90, 90]), so the region test lives</span>
+<span class="sd">    here. A glider outside the region you declared is a **fail**, not a suspect — the point of the</span>
+<span class="sd">    test is to catch a mission that strayed from, or was mislabelled against, its expected area.</span>
+<span class="sd">    Points on the boundary count as inside. Run only when a report config supplies ``region.bbox``;</span>
+<span class="sd">    there is no built-in box (a box drawn from the data cannot fail its own test).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ds : xarray.Dataset</span>
+<span class="sd">        Dataset in **OG1 format**; reads ``LONGITUDE`` and ``LATITUDE``.</span>
+<span class="sd">    bbox : sequence of float</span>
+<span class="sd">        ``[lon_min, lat_min, lon_max, lat_max]`` = ``[west, south, east, north]`` (GeoJSON / ioos_qc</span>
+<span class="sd">        2.x order).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        QARTOD flags per sample: ``1`` inside or on the box, ``4`` outside, ``9`` where ``LONGITUDE``</span>
+<span class="sd">        or ``LATITUDE`` is NaN (position unknown).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Original Author: Eleanor Frajka-Williams</span>
+<span class="sd">    """</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">_check_necessary_variables</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="p">[</span><span class="s2">"LONGITUDE"</span><span class="p">,</span> <span class="s2">"LATITUDE"</span><span class="p">])</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"LONGITUDE"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s2">"LATITUDE"</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">lon_min</span><span class="p">,</span> <span class="n">lat_min</span><span class="p">,</span> <span class="n">lon_max</span><span class="p">,</span> <span class="n">lat_max</span> <span class="o">=</span> <span class="n">bbox</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">lon</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>  <span class="c1"># 1 = good (inside or on the box)</span>
+    <span class="c1"># NaN comparisons are False, so a NaN position is not caught here; it is set to 9 afterwards.</span>
+    <span class="n">flags</span><span class="p">[(</span><span class="n">lon</span> <span class="o">&lt;</span> <span class="n">lon_min</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">lon</span> <span class="o">&gt;</span> <span class="n">lon_max</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">lat</span> <span class="o">&lt;</span> <span class="n">lat_min</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">lat</span> <span class="o">&gt;</span> <span class="n">lat_max</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># outside</span>
+    <span class="n">flags</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span> <span class="o">|</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">lat</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">9</span>  <span class="c1"># position unknown (overrides the above)</span>
+    <span class="k">return</span> <span class="n">flags</span></div>
 
 
 
@@ -465,15 +645,16 @@
 
 <div class="viewcode-block" id="suggest_flat_line">
 <a class="viewcode-back" href="../../glidertest.html#glidertest.qc.suggest_flat_line">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">suggest_flat_line</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suspect_factor</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">fail_factor</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">suggest_flat_line</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suspect_factor</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">fail_factor</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Suggest flat-line windows (seconds) from the sampling interval of *var* (or the whole record).</span>
 
 <span class="sd">    A flat-line window set in seconds must span at least a couple of the sensor's *own* samples to say</span>
 <span class="sd">    anything about flatness. For a sensor sampled off-phase (optics, oxygen — finite only every Nth</span>
 <span class="sd">    cycle) the per-variable interval is coarser than the record's, so basing the window on the record</span>
 <span class="sd">    would suggest one too short. Pass *var* to use that variable's finite-sample interval; omit it for</span>
-<span class="sd">    the whole-record interval. The suggestion is ``suspect_factor``× (default 2) and ``fail_factor``×</span>
-<span class="sd">    (default 3) that interval.</span>
+<span class="sd">    the whole-record interval. The suggestion is ``suspect_factor``× (default 10) and ``fail_factor``×</span>
+<span class="sd">    (default 20) that interval — a window spanning ~10–20 of the sensor's own samples, so only a</span>
+<span class="sd">    genuinely stuck sensor (not a short real-uniform stretch) trips it.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -482,7 +663,7 @@
 <span class="sd">    var : str, optional</span>
 <span class="sd">        Variable whose finite-sample interval to use; when ``None`` the whole-record interval is used.</span>
 <span class="sd">    suspect_factor, fail_factor : int, optional</span>
-<span class="sd">        Multiples of the sampling interval for the suspect (2) and fail (3) windows.</span>
+<span class="sd">        Multiples of the sampling interval for the suspect (10) and fail (20) windows.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -622,7 +803,7 @@
         <span class="n">strdr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'No data'</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">gr</span><span class="p">,</span> <span class="n">spike</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">err_mean</span><span class="p">,</span> <span class="n">err_range</span> <span class="o">=</span> <span class="n">qc_checks</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="n">var</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">gr</span><span class="p">,</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
             <span class="n">strgr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'X'</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">spike</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">spike</span> <span class="o">==</span> <span class="mi">4</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">strst</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'X'</span>
